@@ -1,0 +1,19 @@
+model:
+  name: BayesCI
+  type: logistic
+  source: ApacheJIT
+  features:
+  - la
+  - ld
+  - nf
+  - nd
+  - ns
+  weights:
+  - 0.47618374542850644
+  - 0.09765134692055458
+  - -0.059742101757581
+  - 0.07523204033245694
+  - 1.2081500506333724
+  bias: -3.9965265261139944
+  transform: log1p
+  normalization: odds

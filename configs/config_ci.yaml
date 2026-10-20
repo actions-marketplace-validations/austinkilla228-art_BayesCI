@@ -1,0 +1,4 @@
+project:
+  path: /home/Thinkpad/baies_engine/tests/bayesci_benchmark/case_20_undefined_variable
+build:
+  command: cmake -S . -B build && cmake --build build

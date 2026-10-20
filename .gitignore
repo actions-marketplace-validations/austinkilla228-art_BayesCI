@@ -1,0 +1,11 @@
+.virtualenv/
+.venv/
+__pycache__/
+*.pyc
+*.dll
+*.exe
+*.o
+*.so
+build/
+.env
+.bayesci/
