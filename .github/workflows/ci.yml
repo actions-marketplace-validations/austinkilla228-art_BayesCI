@@ -20,5 +20,3 @@ jobs:
       - name: Check Python syntax
         run: |
           python -m compileall -q .
-      - name: Test CI failure
-        run: exit 1
