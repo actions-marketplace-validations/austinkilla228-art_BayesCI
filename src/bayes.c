@@ -81,3 +81,7 @@ void bayes_free(BayesModel *model){
 	free(model->probabilities);
 	free(model);
 }
+void bayseci_test_failure(void) {
+
+	int x = ;
+}
