@@ -12,8 +12,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure
-        run: cmake -S . -B build
+      - name: Compile Bayes engine
+        run: |
+          gcc -shared -fPIC -O2 -Iinclude \
+            -o libbayes.so src/bayes.c -lm
 
-      - name: Build
-        run: cmake --build build
+      - name: Check Python syntax
+        run: |
+          python -m compileall -q .
