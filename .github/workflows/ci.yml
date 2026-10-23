@@ -16,6 +16,8 @@ jobs:
         run: |
           gcc -shared -fPIC -O2 -Iinclude \
             -o libbayes.so src/bayes.c -lm
+      - name: Test failure
+        run:  exit 1
 
       - name: Check Python syntax
         run: |
