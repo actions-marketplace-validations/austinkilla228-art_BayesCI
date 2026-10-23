@@ -1,11 +1,23 @@
-.virtualenv/
-.venv/
 __pycache__/
 *.pyc
-*.dll
-*.exe
+.virtualenv/
+.venv/
+
 *.o
 *.so
+*.dll
+*.exe
+
 build/
+cmake-build-*/
+
+benchmark_res.txt
+output.txt
+
 .env
-.bayesci/
+# Benchmark repositories
+/tests/bayesci_benchmark/case_*/
+/tests/first_test/
+
+# Local benchmark history backups
+/benchmark_backups/
