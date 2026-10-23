@@ -1,0 +1,33 @@
+# Copy this file to .github/workflows/bayesci.yml in the consuming repository.
+# The triggering workflow must be called CI; change the name below if needed.
+name: BayesCI analysis
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  diagnose:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository for diff analysis (without executing code)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Run BayesCI
+        uses: austinkilla228-art/BayesCI@main # For a public release, pin to a tagged SHA or release
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          workflow-id: ${{ github.event.workflow_run.workflow_id }}
+          branch: ${{ github.event.workflow_run.head_branch }}
+          failed-sha: ${{ github.event.workflow_run.head_sha }}
+          run-id: ${{ github.event.workflow_run.id }}
