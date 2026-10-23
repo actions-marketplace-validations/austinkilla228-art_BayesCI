@@ -1,4 +1,5 @@
-
+import zipfile
+import io
 import json
 import os
 from urllib.request import Request, urlopen
@@ -83,6 +84,51 @@ def get_last_good(repo_path, repo, workflow, branch, failed_sha):
             return good_sha
 
     return None
+
+  
+def get_failed_log(repo, run_id):
+    """
+    repo:   "austinkilla228-art/BayesCI"
+    run_id: идентификатор запуска GitHub Actions
+
+    return: текст логов сборки
+    """
+    url = (
+        f"https://api.github.com/repos/{repo}"
+        f"/actions/runs/{run_id}/logs"
+    )
+
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "BayesCI",
+    }
+
+    token = os.getenv("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    request = Request(url, headers=headers)
+
+    try:
+        with urlopen(request, timeout=30) as response:
+            archive_data = response.read()
+    except HTTPError as error:
+        raise RuntimeError(
+            f"GitHub API returned HTTP {error.code}"
+        ) from error
+
+    logs = []
+
+    with zipfile.ZipFile(io.BytesIO(archive_data)) as archive:
+        for name in archive.namelist():
+            if name.endswith(".txt"):
+                content = archive.read(name).decode(
+                    "utf-8", errors="replace"
+                )
+                logs.append(content)
+
+    return "\n".join(logs)
+
 
 
 if __name__ == "__main__":
