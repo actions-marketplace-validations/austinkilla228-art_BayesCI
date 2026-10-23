@@ -73,15 +73,11 @@ int bayes_predict(const BayesModel *model,size_t *ranking){
 
 void print_topk(BayesModel *model, size_t *ranking){
 	for(size_t i = 0; i< model->count;i++){
-		printf("H_%lli = %.2f%%\n",i,model->probabilities[ranking[i]]*100);
+		printf("H_%zu = %.2f%%\n",i,model->probabilities[ranking[i]]*100);
 	}
 }
 
 void bayes_free(BayesModel *model){
 	free(model->probabilities);
 	free(model);
-}
-void bayseci_test_failure(void) {
-
-	int x = ;
 }

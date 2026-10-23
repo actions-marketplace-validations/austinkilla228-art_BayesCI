@@ -1,3 +1,11 @@
+CC = gcc
+CFLAGS = -O2 -fPIC -Iinclude
+
+ifeq ($(OS),Windows_NT)
+    TARGET = bayes_engine.dll
+else
+    TARGET = libbayesci.so
+endif
 
 all:
-	gcc -shared -O2 -I include/ -o bayes_engine.dll src/bayes.c
+	$(CC) -shared $(CFLAGS) -o $(TARGET) src/bayes.c -lm

@@ -3,11 +3,20 @@ from pathlib import Path
 from git_reader import get_commits,get_changed_files,get_ci_log
 from likelihood import get_likelihoods
 from prior_net import get_prior
+import sys
 
 
 
-path = Path(__file__).resolve().parent/"bayes_engine.dll"
-lib = ctypes.CDLL(str(path))
+
+
+BASE_DIR = Path(__file__).resolve().parent
+
+if sys.platform == "win32":
+    library_path = BASE_DIR/"bayes_engine.dll"
+else:
+    library_path = BASE_DIR/"libbayesci.so"
+
+lib = ctypes.CDLL(str(library_path))
 
 class BayesModel(ctypes.Structure):
     _fields_ = [
@@ -78,6 +87,40 @@ def get_probs(prior,likelihood,commits):
         else:
             likelihood.append(0.1)
     return likelihood
+
+from github_ci import get_last_good, get_failed_log
+from git_reader import get_commits_since
+
+
+def analyze_github_failure(repo_path, github_repo, workflow, branch,
+                           failed_sha, run_id):
+
+    last_good = get_last_good(
+        repo_path, github_repo, workflow, branch, failed_sha
+    )
+
+    if last_good is None:
+        print("Последняя успешная сборка не найдена")
+        return
+
+    commits = get_commits_since(repo_path, last_good, failed_sha)
+
+    if not commits:
+        print("Нет подозреваемых коммитов")
+        return
+
+    ci_log = get_failed_log(github_repo, run_id)
+
+    prior = [1.0 / len(commits)] * len(commits)
+    likelihood = get_likelihoods(repo_path, commits, ci_log)
+
+    result = get_probs(prior, likelihood, commits)
+
+    for sha, probability in result.items():
+        print(f"{sha[:8]}: {probability:.2%}")
+
+    return result
+
 
 if __name__ == "__main__":
     ci_log,exit_code,repo = get_ci_log("configs/config_ci.yaml")
