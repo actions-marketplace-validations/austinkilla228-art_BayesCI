@@ -1,2 +1,0 @@
-# BayesCI
-Testing commit ranking
