@@ -17,7 +17,7 @@ BayesModel *bayes_create(const double *prior, size_t count)
 	}
 	model->count = count;
 	model->probabilities = malloc(sizeof(double) * count);
-	if(prior != NULL){//Если не знаем вероятности то делаем равновероятными
+	if(prior != NULL){
 		for(size_t i = 0 ; i < count;i++){
 			model->probabilities[i] = prior[i];
 		}

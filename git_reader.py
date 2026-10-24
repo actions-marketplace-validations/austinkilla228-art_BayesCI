@@ -51,7 +51,7 @@ def get_ci_log(config_path):
 
 def get_commits_since(repo_path, last_good, bad_commit="HEAD"):
     """
-    Возвращает коммиты после last_good до bad_commit включительно.
+    returns commits from last_good till bad_commit
     """
     subprocess.run(
         ["git", "-C", str(repo_path), "merge-base",

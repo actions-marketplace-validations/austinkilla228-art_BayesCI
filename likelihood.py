@@ -137,7 +137,6 @@ CAUSES = {
     }
 }
 
-# Порядок: source, symbol, build
 PROFILES = {
     "syntax": (0.90, 0.05, 0.05),
     "symbol": (0.30, 0.65, 0.05),

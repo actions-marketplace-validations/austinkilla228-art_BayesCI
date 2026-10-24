@@ -9,13 +9,13 @@ from urllib.error import HTTPError
 
 def get_successful_runs(repo, workflow, branch):
     """
-    Получает успешные запуски GitHub Actions.
+    Success actions in github actions
 
     repo:     "austinkilla228-art/BayesCI"
     workflow: "ci.yml"
     branch:   "main"
 
-    return: список SHA успешных сборок
+    return: list SHA of success commit
     """
     params = urlencode({
         "branch": branch,
@@ -89,9 +89,9 @@ def get_last_good(repo_path, repo, workflow, branch, failed_sha):
 def get_failed_log(repo, run_id):
     """
     repo:   "austinkilla228-art/BayesCI"
-    run_id: идентификатор запуска GitHub Actions
+    run_id: id of github actions run
 
-    return: текст логов сборки
+    return: text of logs 
     """
     url = (
         f"https://api.github.com/repos/{repo}"
