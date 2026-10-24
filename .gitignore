@@ -1,0 +1,9 @@
+*.swp
+*.swo
+__pycache__/
+*.pyc
+.venv/
+.virtualenv/
+*.so
+*.dll
+output.txt
