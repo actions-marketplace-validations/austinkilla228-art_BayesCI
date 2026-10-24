@@ -2,7 +2,6 @@ import ctypes
 from pathlib import Path
 from git_reader import get_commits,get_changed_files,get_ci_log
 from likelihood import get_likelihoods
-from prior_net import get_prior
 import sys
 
 
@@ -100,13 +99,13 @@ def analyze_github_failure(repo_path, github_repo, workflow, branch,
     )
 
     if last_good is None:
-        print("Последняя успешная сборка не найдена")
+        print("Didn't find last succes commit")
         return
 
     commits = get_commits_since(repo_path, last_good, failed_sha)
 
     if not commits:
-        print("Нет подозреваемых коммитов")
+        print("No impostor commits")
         return
 
     ci_log = get_failed_log(github_repo, run_id)
@@ -129,15 +128,8 @@ if __name__ == "__main__":
         commits = get_commits(repo)
         n = len(commits)
         prior = [1.0/n]*n
-
-
-        #prior = get_prior(commits,"configs/prior_vals.yaml")
         likelihood = get_likelihoods(repo,commits,ci_log)
-        #print(likelihood)
         result = get_probs(prior,likelihood,commits)
-        #for sha,p in zip(commits,likelihood):
-         #   print(sha[:8],get_changed_files(repo,sha),p)
-
         for sha, probability in result.items():
             print(f"{sha[:8]}: {probability:.2%}")
     else:

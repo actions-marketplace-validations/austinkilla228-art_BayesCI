@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import os
+import math
 from pathlib import Path
 
 from github_ci import get_failed_log, get_last_good
 from git_reader import get_commits_since
-from likelihood import get_likelihoods
-from main import get_probs
+from main import get_probs,get_likelihoods
 
 
 def _write_summary(markdown: str) -> None:
@@ -40,6 +40,25 @@ def run() -> dict[str, float] | None:
 
     log = get_failed_log(repository, run_id)
     scores = get_likelihoods(repo_path, commits, log)
+
+    # Equal likelihoods contain no evidence that distinguishes commits.
+    # Do not publish a misleading, arbitrary Top-3 (e.g. Count: 0).
+    if (len(scores) != len(commits) or not scores
+            or any(not math.isfinite(v) or v < 0 for v in scores)):
+        _write_summary("## BayesCI — failed CI analysis\n\nInvalid likelihood values; no ranking was produced.")
+        return None
+    if all(math.isclose(v, scores[0], rel_tol=1e-12, abs_tol=1e-12)
+           for v in scores[1:]):
+        _write_summary(
+            "## BayesCI — failed CI analysis\n\n"
+            f"Last successful commit: `{last_good[:12]}`\n\n"
+            f"Failed commit: `{sha[:12]}`\n\n"
+            f"Candidates: **{len(commits)}**\n\n"
+            "No distinguishing evidence was found in the build log and Git diffs. "
+            "BayesCI cannot identify a likely culprit from these inputs."
+        )
+        return None
+
     prior = [1 / len(commits)] * len(commits)
     ranking = get_probs(prior, scores, commits)
 

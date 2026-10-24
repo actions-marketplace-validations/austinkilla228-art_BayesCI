@@ -17,11 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository for diff analysis (without executing code)
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 0
-          persist-credentials: false
+        - uses: actions/checkout@v4
+  	  with:
+    		fetch-depth: 0
+    		submodules: false
+    		persist-credentials: false
+       
       - name: Run BayesCI
         uses: austinkilla228-art/BayesCI@main # For a public release, pin to a tagged SHA or release
         with:

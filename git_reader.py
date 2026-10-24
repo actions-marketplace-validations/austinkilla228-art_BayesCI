@@ -71,4 +71,13 @@ def get_commits_since(repo_path, last_good, bad_commit="HEAD"):
 
     return result.splitlines()
 
-#commits = get_commits("tests/first_test")
+
+def gtet_commits_since(repo,path,last_good,failed_sha):
+    result = subprocess.chek_output(
+            ["git", "-C", str(repo_path),
+             "rev-list", "--reverse",
+             f"{last_good}..{failed_sha}"
+             ],
+            text=True
+    )
+    return result.splitlines()

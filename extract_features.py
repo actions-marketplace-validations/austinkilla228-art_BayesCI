@@ -1,7 +1,7 @@
 """Minimal Git-diff evidence extraction for BayesCI (Python 3.10+, stdlib).
 
 Inputs: gcc_clang.Diagnostic objects (or equivalent dicts) and per-commit
-unified diff strings. Outputs: F/S/B observations (1, 0, or None).
+unified diff strings. Outputs: F/S/B/line observations (1, 0, or None).
 
 This module does not estimate likelihoods or probabilities.
 """
@@ -15,7 +15,7 @@ import re
 from typing import Iterable, Mapping, Any
 
 DIFF_HEADER = re.compile(r'^diff --git a/(.*?) b/(.*)$')
-HUNK_HEADER = re.compile(r'^@@ .*? @@')
+HUNK_HEADER = re.compile(r'^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@')
 BUILD_FILES = {'cmakelists.txt', 'makefile', 'gnumakefile', 'meson.build',
                'build.gradle', 'build.gradle.kts', 'pom.xml', 'cargo.toml',
                'configure.ac', 'configure.in', 'setup.py', 'pyproject.toml'}
@@ -28,6 +28,7 @@ class Features:
     file: int | None
     symbol: int | None
     build: int | None
+    line: int | None = None
 
     def to_dict(self) -> dict[str, int | None]:
         return asdict(self)
@@ -38,6 +39,8 @@ class ChangedFile:
     old_path: str
     new_path: str
     changed_lines: tuple[str, ...]
+    added_new_lines: tuple[int, ...] = ()
+    removed_new_anchors: tuple[int, ...] = ()
 
 
 def _norm(path: str) -> str:
@@ -72,18 +75,22 @@ def parse_unified_diff(diff: str) -> list[ChangedFile]:
     files: list[ChangedFile] = []
     old = new = None
     changes: list[str] = []
+    added_lines: list[int] = []
+    removed_anchors: list[int] = []
     in_hunk = False
+    old_line = new_line = 0
 
     def flush() -> None:
         if old is not None and new is not None:
-            files.append(ChangedFile(old, new, tuple(changes)))
+            files.append(ChangedFile(old, new, tuple(changes),
+                                     tuple(added_lines), tuple(removed_anchors)))
 
     for line in diff.splitlines():
         m = DIFF_HEADER.match(line)
         if m:
             flush()
             old, new = _norm(m.group(1)), _norm(m.group(2))
-            changes = []
+            changes, added_lines, removed_anchors = [], [], []
             in_hunk = False
             continue
         if old is None:
@@ -100,12 +107,25 @@ def parse_unified_diff(diff: str) -> list[ChangedFile]:
             value = line[4:]
             if value != '/dev/null':
                 new = _norm(value)
-        elif HUNK_HEADER.match(line):
+        elif (m := HUNK_HEADER.match(line)):
+            old_line, new_line = int(m.group(1)), int(m.group(2))
             in_hunk = True
         elif line.startswith(('GIT binary patch', 'Binary files ')):
             in_hunk = False
-        elif in_hunk and line[:1] in ('+', '-'):
-            changes.append(line[1:])
+        elif in_hunk:
+            if line.startswith('+'):
+                changes.append(line[1:])
+                added_lines.append(new_line)
+                new_line += 1
+            elif line.startswith('-'):
+                changes.append(line[1:])
+                # A removal can cause an error at the next surviving line.
+                removed_anchors.append(new_line)
+                old_line += 1
+            elif line.startswith(' '):
+                old_line += 1
+                new_line += 1
+            # Ignore "\ No newline at end of file" markers.
     flush()
     return files
 
@@ -137,7 +157,7 @@ def extract_for_commit(diagnostics: Iterable[Any], diff: str) -> Features:
     diagnostics = list(diagnostics)
     changed = parse_unified_diff(diff)
     if not diagnostics:
-        return Features(None, None, None)
+        return Features(None, None, None, None)
 
     files = [_get(d, 'file') for d in diagnostics]
     symbols = [_get(d, 'symbol') for d in diagnostics]
@@ -157,11 +177,21 @@ def extract_for_commit(diagnostics: Iterable[Any], diff: str) -> Features:
     relevant_build_error = any(cat in {'linker', 'header', 'build'} for cat in categories)
     build_match = (int(any(_is_build_file(f.old_path) or _is_build_file(f.new_path)
                            for f in changed)) if relevant_build_error else None)
-    return Features(file_match, symbol_match, build_match)
+    known_locations = [(_get(d, 'file'), _get(d, 'line')) for d in diagnostics]
+    known_locations = [(path, line) for path, line in known_locations
+                       if isinstance(path, str) and path.strip()
+                       and isinstance(line, int) and not isinstance(line, bool)
+                       and line > 0]
+    line_match = (int(any(
+        (_same_file(path, f.old_path) or _same_file(path, f.new_path))
+        and (line in f.added_new_lines or line in f.removed_new_anchors)
+        for path, line in known_locations for f in changed
+    )) if known_locations else None)
+    return Features(file_match, symbol_match, build_match, line_match)
 
 
 def extract_features(diagnostics: Iterable[Any], diffs: Mapping[str, str]) -> dict[str, dict[str, int | None]]:
-    """Return {commit_sha: {'file': ..., 'symbol': ..., 'build': ...}}.
+    """Return {commit_sha: {'file': ..., 'symbol': ..., 'build': ..., 'line': ...}}.
 
     `diffs` maps each commit SHA to a unified diff (`git show --format= --find-renames SHA`).
     """
@@ -171,7 +201,7 @@ def extract_features(diagnostics: Iterable[Any], diffs: Mapping[str, str]) -> di
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description='Extract F/S/B evidence from diagnostics and Git diffs')
+    ap = argparse.ArgumentParser(description='Extract F/S/B/line evidence from diagnostics and Git diffs')
     ap.add_argument('--diagnostics', required=True, help='JSON array emitted by gcc_clang.py')
     ap.add_argument('--diffs', required=True, help='JSON object {SHA: unified_diff_text}')
     args = ap.parse_args()

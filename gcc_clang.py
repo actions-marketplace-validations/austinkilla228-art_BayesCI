@@ -12,10 +12,34 @@ import sys
 from typing import Iterable, Iterator
 
 ANSI = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
+# GitHub Actions downloaded job logs may have an ISO timestamp before each line.
+LOG_TIMESTAMP = re.compile(r'^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)\s+')
 COMPILER = re.compile(r'^(?P<location>.+):\s*(?P<severity>fatal error|error|warning|note):\s*(?P<message>.*)$')
 LOCATION = re.compile(r'^(?P<file>.+?):(?P<line>\d+)(?::(?P<column>\d+))?$')
+# GCC/Clang driver errors can have no source-file location, e.g.
+#   cc: error: unrecognized command-line option '-fno-such-option'
+#   /usr/bin/clang++: error: unknown argument: '-fno-such-option'
+# Treat these as build diagnostics so CMake/Make changes can be matched.
+DRIVER_ERROR = re.compile(
+    r'^(?:.*[\\/])?(?:[A-Za-z0-9_+.]+-)*'
+    r'(?:gcc|g\+\+|clang\+\+|clang-cl|clang|cc|c\+\+)'
+    r'(?:-[0-9.]+)?(?:\.exe)?:\s*'
+    r'(?P<severity>fatal error|error|warning):\s*(?P<message>.+)$',
+    re.I,
+)
 LINKER = re.compile(r'\b(?:undefined reference to|undefined symbol:|multiple definition of|duplicate symbol:)\s*(?P<symbol>.+)', re.I)
-LINKER_SOURCE = re.compile(r'(?:\b(?:ld|ld\.lld|lld|collect2)(?:\.exe)?\b|\.(?:o|obj|a|so)(?::|\b)|\bld:)', re.I)
+LINKER_SOURCE = re.compile(
+    r'(?:\b(?:ld|ld\.lld|lld|lld-link|collect2|link)(?:\.exe)?\b|\.(?:o|obj|a|so)(?::|\b)|\bld:)',
+    re.I,
+)
+# Missing libraries reported by GNU ld, Clang lld, Apple ld and MSVC LINK.
+LIBRARY_PATTERNS = (
+    re.compile(r'\bcannot find\s+(?P<library>-l[^\s:;,]+)', re.I),
+    re.compile(r'\b(?:library not found for|unable to find library)\s+(?P<library>-l[^\s:;,]+)', re.I),
+    re.compile(r'\bcannot find\s+(?P<library>[^\s:;,]+\.(?:a|so(?:\.\d+)*|dylib|lib))', re.I),
+    re.compile(r'\b(?:cannot open (?:input )?file|could not open)\s+[\'\"]?(?P<library>[^\'\"\s:;,]+\.(?:a|so(?:\.\d+)*|dylib|lib))', re.I),
+    re.compile(r'\b(?:cannot open|unable to open)\s+(?P<library>[^\s:;,]+\.(?:a|so(?:\.\d+)*|dylib|lib))', re.I),
+)
 SYMBOL_PATTERNS = [
     re.compile(r"(?:use of undeclared identifier|implicit declaration of function|unknown type name|no member named|undeclared identifier)\s+['‘`]([^'’`]+)['’`]", re.I),
     re.compile(r"['‘`]([^'’`]+)['’`]\s+(?:undeclared|was not declared)", re.I),
@@ -61,8 +85,31 @@ def extract_symbol(message: str) -> str | None:
     return None
 
 
+def _clean_log_line(raw: str) -> str:
+    return LOG_TIMESTAMP.sub('', ANSI.sub('', raw).strip())
+
+
+def _linker_symbol(text: str) -> str:
+    """Extract just the symbol; do not swallow the `first defined here` suffix."""
+    text = text.strip()
+    closing = {'`': "'", "'": "'", '"': '"', '‘': '’'}
+    if text and text[0] in closing:
+        end = text.find(closing[text[0]], 1)
+        if end != -1:
+            return text[1:end]
+    return text.split(';', 1)[0].strip("`'‘’\" ")
+
+
+def _library_symbol(library: str) -> str | None:
+    """Use the -lNAME name when possible; paths are not C identifiers."""
+    if library.startswith('-l'):
+        name = library[2:]
+        return name if re.fullmatch(r'[A-Za-z_][A-Za-z_0-9]*', name) else None
+    return None
+
+
 def parse_line(raw: str) -> Diagnostic | None:
-    line = ANSI.sub('', raw).strip()
+    line = _clean_log_line(raw)
     match = COMPILER.match(line)
     if match:
         location = LOCATION.match(match['location'])
@@ -75,12 +122,26 @@ def parse_line(raw: str) -> Diagnostic | None:
                 column=int(location['column']) if location['column'] else None,
                 symbol=extract_symbol(msg),
             )
+
+    driver = DRIVER_ERROR.match(line)
+    if driver:
+        return Diagnostic(
+            category='build', severity=driver['severity'],
+            message=driver['message'],
+        )
+
     link = LINKER.search(line)
     if link and LINKER_SOURCE.search(line):
-        symbol = link['symbol'].strip().strip("`'‘’\" ")
-        # Some ld messages include trailing annotation; preserve full original message.
-        return Diagnostic(category='linker', severity='error', message=line, symbol=symbol)
-    # lld frequently prints "ld.lld: error: undefined symbol: foo" (handled above).
+        return Diagnostic(category='linker', severity='error', message=line,
+                          symbol=_linker_symbol(link['symbol']))
+
+    if LINKER_SOURCE.search(line):
+        for pattern in LIBRARY_PATTERNS:
+            missing = pattern.search(line)
+            if missing:
+                library = missing['library']
+                return Diagnostic(category='linker', severity='error', message=line,
+                                  symbol=_library_symbol(library))
     return None
 
 

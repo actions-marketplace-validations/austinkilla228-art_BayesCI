@@ -111,12 +111,65 @@ def get_likelihoods(repo_path, commits, ci_log):
     }
 
     features = extract_features(diagnostics, diffs)
-    factors = likelihoods(features)
-    
-    for commit in commits:
-        print(
-            f"{commit[:8]} | "
-            f"evidence={features[commit]} | "
-            f"likelihood={factors[commit]:.4f}"
-        )
-    return [float(factors[commit]) for commit in commits]
+
+    category = diagnostics[0].category if diagnostics else "other"
+
+    factors = {
+            commit: causal_likelihood(evidence,category)
+            for commit,evidence  in features.items()
+    }
+    return [factors[commit] for commit in commits]
+
+from math import exp
+
+CAUSES = {
+    "source": {
+        "file": 1.0,
+        "line": 2.5
+    },
+
+    "symbol": {
+        "symbol": 2.2
+    },
+
+    "build": {
+        "build": 1.8
+    }
+}
+
+# Порядок: source, symbol, build
+PROFILES = {
+    "syntax": (0.90, 0.05, 0.05),
+    "symbol": (0.30, 0.65, 0.05),
+    "linker": (0.10, 0.75, 0.15),
+    "header": (0.55, 0.05, 0.40),
+    "build":  (0.05, 0.05, 0.90),
+    "other":  (0.40, 0.30, 0.30)
+}
+
+
+def causal_likelihood(evidence, category="other"):
+    if not any(v is not None for v in evidence.values()):
+        return 1.0
+
+    profile = PROFILES.get(category, PROFILES["other"])
+
+    likelihood = 0.0
+
+    for probability, cause in zip(profile, CAUSES.values()):
+        score = 0.0
+
+        for feature, weight in cause.items():
+            value = evidence.get(feature)
+
+            if value is None:
+                continue
+
+            if value == 1:
+                score += weight
+            elif value == 0:
+                score -= 0.3 * weight
+
+        likelihood += probability * exp(score)
+
+    return likelihood
