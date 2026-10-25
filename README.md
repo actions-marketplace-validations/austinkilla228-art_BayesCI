@@ -273,6 +273,19 @@ Feel free to fork BayesCI, build a GUI, create your own integration, or experime
 
 Questions and ideas are always welcome. I'll do my best to help.
 
+## Contributing
+
+Contributions are welcome from everyone, including beginners and students!
+
+Looking for a place to start?
+
+Check out our [Good First Issues](https://github.com/austinkilla228-art/BayesCI/labels/good%20first%20issue).
+
+You can contribute by adding tests, improving parsers,
+writing documentation, or building your own integrations.
+
+**KISS for developers. Install and Forget for users.**
+
 **Freedom for contributors. Simplicity for users.**
 
 ## License
