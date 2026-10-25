@@ -235,6 +235,13 @@ Contributions, bug reports, and real-world CI logs (with secrets removed) are we
 
 ---
 
+## License
+
+BayesCI is open-source software licensed under the
+[MIT License](LICENSE).
+
+Copyright (c) 2026 austinkilla228-art.
+
 <div align="center">
 
 **BayesCI** · Less guessing. More evidence.
