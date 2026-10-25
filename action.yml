@@ -42,3 +42,7 @@ runs:
         BAYESCI_FAILED_SHA: ${{ inputs.failed-sha }}
         BAYESCI_RUN_ID: ${{ inputs.run-id }}
       run: python "$GITHUB_ACTION_PATH/action_runner.py"
+
+branding:
+  icon: 'activity'
+  color: 'blue'
