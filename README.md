@@ -288,6 +288,12 @@ writing documentation, or building your own integrations.
 
 **Freedom for contributors. Simplicity for users.**
 
+## Roadmap
+
+Interested in what's next?
+
+Check out our [Development Roadmap](ROADMAP.md).
+
 ## License
 
 BayesCI is open-source software licensed under the
