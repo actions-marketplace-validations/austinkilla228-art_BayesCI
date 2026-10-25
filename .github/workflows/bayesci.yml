@@ -24,7 +24,7 @@ jobs:
     		persist-credentials: false
        
       - name: Run BayesCI
-        uses: austinkilla228-art/BayesCI@main # For a public release, pin to a tagged SHA or release
+        uses: austinkilla228-art/BayesCI@v1.0.0 # For a public release, pin to a tagged SHA or release
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
