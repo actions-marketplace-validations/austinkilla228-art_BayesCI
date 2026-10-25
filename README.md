@@ -235,6 +235,46 @@ Contributions, bug reports, and real-world CI logs (with secrets removed) are we
 
 ---
 
+## Project Philosophy
+
+BayesCI is built around two simple principles: **KISS** and **Install and Forget**.
+
+### KISS — Keep It Simple, Stupid
+
+The computational core is written in C to remain lightweight, portable, and independent of any particular programming language.
+
+The idea is simple: **the parser is replaceable, the mathematical engine is reusable.**
+
+You can write your own diagnostic parser in Python, Rust, Go, Java, C#, or any other language and integrate it with the existing C engine through a shared library (`.so` / `.dll`).
+
+The core should remain small, understandable, and free from unnecessary complexity.
+
+### Install and Forget
+
+For end users, BayesCI should require as little effort as possible.
+
+Add a GitHub Actions workflow, configure it once, and let BayesCI handle supported build failures automatically.
+
+No paid AI APIs, dedicated servers, or constant manual intervention.
+
+**Install once. Let it work.**
+
+### Everyone Is Welcome
+
+BayesCI is a community-driven open-source project, and contributions are welcome from absolutely anyone.
+
+Whether you're a high school student, university student, beginner, hobbyist, or experienced developer — your background doesn't matter.
+
+At this early stage, I'm open to all kinds of contributions: bug fixes, parsers, integrations, documentation, experiments, and entirely new interfaces.
+
+Pull requests will be reviewed with particular attention to security. Changes to the C computational core should preserve its simplicity and avoid unnecessary complexity.
+
+Feel free to fork BayesCI, build a GUI, create your own integration, or experiment with the underlying mathematical engine.
+
+Questions and ideas are always welcome. I'll do my best to help.
+
+**Freedom for contributors. Simplicity for users.**
+
 ## License
 
 BayesCI is open-source software licensed under the
